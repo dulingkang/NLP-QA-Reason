@@ -9,3 +9,4 @@ QA_STOPWORDS_PATH = '../data/stop_words.txt'
 
 QA_WORD2VEC_OUT_PATH = '../data/word2vec.txt'
 QA_WORD2VEC_BIN_PATH = '../data/word2vec.bin'
+QA_WORD2VEC_VOCAB_PATH = '../data/vocab.txt'

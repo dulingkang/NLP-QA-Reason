@@ -7,7 +7,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 
-from const import QA_TRAIN_CLEAN_X_PATH, QA_TRAIN_CLEAN_Y_PATH, QA_TEST_CLEAN_X_PATH
+from const import QA_TRAIN_CLEAN_X_PATH, QA_TRAIN_CLEAN_Y_PATH, QA_TEST_CLEAN_X_PATH, QA_WORD2VEC_VOCAB_PATH
 
 
 def save_word_dict(vocab, save_path):
@@ -50,7 +50,8 @@ def build_vocab(items, sort=True, min_count=0, lower=False):
         for item in items:
             for i in item.split(" "):
                 i = i.strip()
-                if not i: continue
+                if not i:
+                    continue
                 i = i if not lower else item.lower()
                 dic[i] += 1
         # sort
@@ -78,4 +79,4 @@ if __name__ == '__main__':
         QA_TRAIN_CLEAN_Y_PATH,
         QA_TEST_CLEAN_X_PATH)
     vocab, reverse_vocab = build_vocab(lines)
-    save_word_dict(vocab, '../data/vocab.txt')
+    save_word_dict(vocab, QA_WORD2VEC_VOCAB_PATH)
