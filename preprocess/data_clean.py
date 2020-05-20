@@ -3,11 +3,11 @@
 import pandas as pd
 import jieba
 from jieba import posseg
-import os
-import sys
+import os, sys, inspect
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))))))
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
 
 from const import (
     QA_TRAIN_DATA_PATH,

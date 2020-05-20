@@ -23,15 +23,14 @@ def read_data(path_1, path_2, path_3):
             open(path_3, 'r', encoding='utf-8') as f3:
         words = []
         for line in f1:
-            words = line.split()
+            words += line.split(' ')
 
         for line in f2:
             words += line.split(' ')
 
         for line in f3:
             words += line.split(' ')
-
-    return words
+    return list(set(words))
 
 
 def build_vocab(items, sort=True, min_count=0, lower=False):

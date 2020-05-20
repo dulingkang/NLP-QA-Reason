@@ -5,7 +5,6 @@ from optparse import OptionParser
 from gensim.models import Word2Vec
 from gensim.models.word2vec import LineSentence
 from gensim.models.keyedvectors import KeyedVectors
-# from pt20200419.utils.data_utils import dump_pkl
 
 import os, sys, inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -16,10 +15,11 @@ from const import (
     QA_TRAIN_CLEAN_X_PATH,
     QA_TRAIN_CLEAN_Y_PATH,
     QA_TEST_CLEAN_X_PATH,
-    QA_WORD2VEC_OUT_PATH,
+    QA_WORD2VEC_PKL_OUT_PATH,
     QA_WORD2VEC_BIN_PATH,
     QA_SENTENCE_PATH,
     QA_WORD2VEC_VOCAB_PATH, QA_WORD2VEC_EMBEDDING_PATH)
+from utils.data_utils import dump_pkl
 
 
 def read_lines(path, col_sep=None):
@@ -52,7 +52,7 @@ def save_sentence(lines, sentence_path):
     print('save sentence:%s' % sentence_path)
 
 
-def save_w2v(binary=True, min_count=100):
+def save_w2v(bin_path, pkl_out_path, min_count=100):
     sentences = extract_sentence(QA_TRAIN_CLEAN_X_PATH, QA_TRAIN_CLEAN_Y_PATH, QA_TEST_CLEAN_X_PATH)
     save_sentence(sentences, QA_SENTENCE_PATH)
     print('train w2v model...')
@@ -60,9 +60,14 @@ def save_w2v(binary=True, min_count=100):
     w2v = Word2Vec(
         sg=1, sentences=LineSentence(QA_SENTENCE_PATH),
         size=256, window=5, min_count=min_count, iter=5)
-    out_path = QA_WORD2VEC_BIN_PATH if binary else QA_WORD2VEC_OUT_PATH
-    w2v.wv.save_word2vec_format(out_path, binary=binary)
-    print("save w2v model %s ok." % out_path)
+    w2v.wv.save_word2vec_format(bin_path, binary=True)
+    print("save w2v model %s ok." % bin_path)
+
+    model = KeyedVectors.load_word2vec_format(bin_path, binary=True)
+    word_dict = {}
+    for word in model.vocab:
+        word_dict[word] = model[word]
+    dump_pkl(word_dict, pkl_out_path, overwrite=True)
 
 
 def test_similar():
@@ -123,14 +128,14 @@ def build_embedding(vocab_path, model_path):
 if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option('-t', '--train', action="store_true", help=u'训练word2vec model')
-    parser.add_option('-b', '--binary', type='int', default=1, help=u'是否二进制存储')
     parser.add_option('-e', '--embedding', action="store_true", help=u'构建embedding matrix')
     parser.add_option('-s', '--similary', action="store_true", help=u'similary test')
 
     options, args = parser.parse_args()
-
+    print(options)
     if options.train:
-        save_w2v(binary=options.binary)
+        print(11111)
+        save_w2v(bin_path=QA_WORD2VEC_BIN_PATH, pkl_out_path=QA_WORD2VEC_PKL_OUT_PATH)
     elif options.similary:
         test_similar()
     elif options.embedding:
