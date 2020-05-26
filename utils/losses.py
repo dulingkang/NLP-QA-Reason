@@ -1,35 +1,40 @@
 import tensorflow as tf
 
 
-loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False, reduction='none')
+loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
 
 
-def loss_function(real, outputs, padding_mask, cov_loss_wt, use_coverage):
-    pred = outputs["logits"]
-    attn_dists = outputs["attentions"]
-    if use_coverage:
-        loss = pgn_log_loss_function(real, pred, padding_mask) + cov_loss_wt * _coverage_loss(attn_dists, padding_mask)
-        return loss
-    else:
-        return seq2seq_loss_function(real, pred, padding_mask)
-
-
-def seq2seq_loss_function(real, pred, padding_mask):
-    """
-    跑seq2seq时用的Loss
-    :param real: shape=(16, 50)
-    :param pred: shape=(16, 50, 30000)
-    :return:
-    """
+def loss_function(real, pred, padding_mask):
     loss = 0
     for t in range(real.shape[1]):
-        loss_ = loss_object(real[:, t], pred[:, t])
+        loss_ = loss_object(real[:, t], pred[:, t, :])
         mask = tf.cast(padding_mask[:, t], dtype=loss_.dtype)
         mask = tf.cast(mask, dtype=loss_.dtype)
         loss_ *= mask
-        loss_ = tf.reduce_mean(loss_)
+        loss_ = tf.reduce_mean(loss_)  # batch-wise
         loss += loss_
     return loss / real.shape[1]
+
+
+# def loss_function(real, pred, padding_mask):
+#     mask = tf.math.logical_not(tf.math.equal(real, 31623))
+#     loss_ = loss_object(real, pred)
+#     mask = tf.cast(mask, dtype=loss_.dtype)
+#     loss_ *= mask
+#     return tf.reduce_mean(loss_)
+
+
+def calc_loss(real, pred, padding_mask, attentions, cov_loss_wt, use_coverage,use_pgn):
+    if use_pgn:
+        log_loss = pgn_log_loss_function(real, pred, padding_mask)
+    else:
+        log_loss = loss_function(real, pred, padding_mask)
+
+    if use_coverage:
+        cov_loss = _coverage_loss(attentions, padding_mask)
+        return log_loss + cov_loss_wt * cov_loss, log_loss, cov_loss
+    else:
+        return log_loss, 0, 0
 
 
 def pgn_log_loss_function(real, final_dists, padding_mask):

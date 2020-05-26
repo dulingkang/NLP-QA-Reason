@@ -5,6 +5,7 @@ import copy
 import time
 from collections import Counter
 
+from const import QA_WORD2VEC_EMBEDDING_NPY_PATH
 
 PAD_TOKEN = 'PAD'
 GO_TOKEN = 'GO'
@@ -190,7 +191,7 @@ def dump_pkl(vocab, pkl_path, overwrite=True):
         return
     if pkl_path:
         with open(pkl_path, 'wb') as f:
-            pickle.dump(vocab, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(vocab, f, protocol=pickle.DEFAULT_PROTOCOL)
             # pickle.dump(vocab, f, protocol=0)
         print("save %s ok." % pkl_path)
 
@@ -262,6 +263,15 @@ def load_word2vec(params):
             embedding_matrix[int(i)] = embedding_vector
 
     return embedding_matrix
+
+
+def load_embedding_matrix(filepath, max_vocab_size=30000):
+    """
+    加载 embedding_matrix_path
+    """
+    embedding_matrix = np.load(filepath)
+    flag_matrix = np.zeros_like(embedding_matrix[:4])
+    return np.concatenate([flag_matrix, embedding_matrix])[:max_vocab_size]
 
 
 # def get_result_filename(save_result_dir, batch_size, epochs, max_length_inp, embedding_dim, commit=''):

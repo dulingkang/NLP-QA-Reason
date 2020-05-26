@@ -4,12 +4,10 @@ from seq2seq.model.sequence_to_sequence import SequenceToSequence
 from seq2seq.model.pgn import PGN
 from seq2seq.batcher import batcher, Vocab
 from seq2seq.train_helper import train_model, train_model_pgn
-from seq2seq.test_helper import greedy_decode
+from seq2seq.test_helper import beam_decode
 from tqdm import tqdm
 from utils.data_utils import get_result_filename
 import pandas as pd
-from rouge import Rouge
-import pprint
 
 
 def init_checkpoint(dir):
@@ -17,77 +15,69 @@ def init_checkpoint(dir):
     init_path = checkpoint.save(os.path.join(dir, 'init'))
     checkpoint.restore(init_path)
 
-def train(params):
-    assert params["mode"].lower() == "train", "change training mode to 'train'"
 
-    vocab = Vocab(params["vocab_path"], params["vocab_size"])
+def prepare(params):
+    gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+    if gpus:
+        tf.config.experimental.set_visible_devices(devices=gpus[0], device_type='GPU')
+        tf.config.experimental.set_memory_growth(gpus[0], enable=True)
+
+    vocab = Vocab(params["vocab_path"], params["max_vocab_size"])
+    params['vocab_size'] = vocab.count
     print('true vocab is ', vocab)
 
     print("Creating the batcher ...")
     b = batcher(vocab, params)
 
     print("Building the model ...")
-    if params.get('use_pgn'):
+    if params.get('pointer_gen'):
         model = PGN(params)
-        ckpt = tf.train.Checkpoint(step=tf.Variable(0), PGN=model)
+        ckpt = tf.train.Checkpoint(PGN=model)
         checkpoint_dir = params["pgn_model_dir"]
     else:
         model = SequenceToSequence(params)
         ckpt = tf.train.Checkpoint(SequenceToSequence=model)
         checkpoint_dir = params["seq2seq_model_dir"]
     print("Creating the checkpoint manager", checkpoint_dir)
-    ckpt_manager = tf.train.CheckpointManager(
-        ckpt, checkpoint_dir, max_to_keep=5, init_fn=init_checkpoint(checkpoint_dir))
-    ckpt_manager.restore_or_initialize()
+    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=5)
+    ckpt.restore(ckpt_manager.latest_checkpoint)
     if ckpt_manager.latest_checkpoint:
         print("Restored from {}".format(ckpt_manager.latest_checkpoint))
     else:
         print("Initializing from scratch.")
+    return model, vocab, b, params, ckpt_manager
+
+
+def train(params):
+    model, vocab, b, params, ckpt_manager = prepare(params)
 
     print("Starting the training ...")
-    if params.get('use_pgn'):
+    if params.get('pointer_gen'):
         train_model_pgn(model, b, params, ckpt_manager)
     else:
         train_model(model, b, params, ckpt_manager)
 
 
-def test(params):
-    assert params["mode"].lower() == "test", "change training mode to 'test' or 'eval'"
-    # assert params["beam_size"] == params["batch_size"], "Beam size must be equal to batch_size, change the params"
-
-    print("Building the model ...")
-    model = SequenceToSequence(params)
-
-    print("Creating the vocab ...")
-    vocab = Vocab(params["vocab_path"], params["vocab_size"])
-
-    print("Creating the batcher ...")
-    b = batcher(vocab, params)
-
-    print("Creating the checkpoint manager")
-    checkpoint_dir = "{}/checkpoint".format(params["seq2seq_model_dir"])
-    ckpt = tf.train.Checkpoint(SequenceToSequence=model)
-    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=5)
-
-    # path = params["model_path"] if params["model_path"] else ckpt_manager.latest_checkpoint
-    # path = ckpt_manager.latest_checkpoint
-    ckpt.restore(ckpt_manager.latest_checkpoint)
-    print("Model restored")
-    # for batch in b:
-    #     yield batch_greedy_decode(model, batch, vocab, params)
-    if params['greedy_decode']:
-        # params['batch_size'] = 512
-        predict_result(model, params, vocab, params['test_save_dir'])
-
-
-def predict_result(model, params, vocab, result_save_path):
-    dataset = batcher(vocab, params)
-    # 预测结果
-    results = greedy_decode(model, dataset, vocab, params)
-    results = list(map(lambda x: x.replace(" ",""), results))
+def predict_result(params):
+    result = []
+    model, vocab, b, params, ckpt_manager = prepare(params)
+    for batch in b:
+        # yield beam_decode(model, batch, vocab, params)
+        result.append(beam_decode(model, batch, vocab, params))
+    print('predict result', result)
     # 保存结果
-    save_predict_result(results, params)
+    save_predict_result(result, params['test_save_dir'])
 
+
+def test_and_save(params):
+    assert params["test_save_dir"], "provide a dir where to save the results"
+    gen = test(params)
+    results = []
+    with tqdm(total=params["num_to_test"], position=0, leave=True) as pbar:
+        for i in range(params["num_to_test"]):
+            trial = next(gen)
+            results.append(trial.abstract)
+            pbar.update(1)
     return results
 
 
@@ -101,36 +91,6 @@ def save_predict_result(results, params):
     # 保存结果.
     result_save_path = get_result_filename(params)
     test_df.to_csv(result_save_path, index=None, sep=',')
-
-
-def test_and_save(params):
-    assert params["test_save_dir"], "provide a dir where to save the results"
-    gen = test(params)
-    with tqdm(total=params["num_to_test"], position=0, leave=True) as pbar:
-        for i in range(params["num_to_test"]):
-            trial = next(gen)
-            with open(params["test_save_dir"] + "/article_" + str(i) + ".txt", "w", encoding='utf-8') as f:
-                f.write("article:\n")
-                f.write(trial.text)
-                f.write("\n\nabstract:\n")
-                f.write(trial.abstract)
-            pbar.update(1)
-
-
-def evaluate(params):
-    gen = test(params)
-    reals = []
-    preds = []
-    with tqdm(total=params["max_num_to_eval"], position=0, leave=True) as pbar:
-        for i in range(params["max_num_to_eval"]):
-            trial = next(gen)
-            reals.append(trial.real_abstract)
-            preds.append(trial.abstract)
-            pbar.update(1)
-    r = Rouge()
-    scores = r.get_scores(preds, reals, avg=True)
-    print("\n\n")
-    pprint.pprint(scores)
 
 
 if __name__ == '__main__':
