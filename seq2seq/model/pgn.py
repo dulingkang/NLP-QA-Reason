@@ -49,7 +49,7 @@ class PGN(tf.keras.Model):
             return pred, dec_hidden, context_vector, attentions, None, coverage_ret
         # return pred, dec_hidden, context_vector, attention_weights
 
-    def __call__(self, dec_hidden, enc_output, dec_inp,
+    def call(self, dec_hidden, enc_output, dec_inp,
              enc_extended_inp, batch_oov_len,
              enc_pad_mask, use_coverage, prev_coverage=None):
         '''
@@ -84,7 +84,7 @@ class PGN(tf.keras.Model):
 
             p_gen = self.pointer(context_vector, dec_hidden, dec_x)
             coverages.append(coverage_ret)
-            attentions.append(tf.squeeze(attn, axis=2))
+            attentions.append(attn)
             predictions.append(dec_pred)
             p_gens.append(p_gen)
 
@@ -96,10 +96,12 @@ class PGN(tf.keras.Model):
                                            batch_oov_len,
                                            self.params["vocab_size"],
                                            self.params["batch_size"])
-            if self.params["mode"] == "train":
-                return final_dists, dec_hidden, attentions, tf.stack(coverages, 1)
+            if self.params['mode'] == "train":
+                outputs = final_dists, dec_hidden, attentions, tf.stack(coverages, 1)
             else:
-                return tf.stack(final_dists, 1), dec_hidden, attentions, tf.stack(coverages, 1)
+                outputs = tf.stack(final_dists, 1), dec_hidden, attentions, tf.stack(coverages, 1)
+
+            return outputs
         else:
             return tf.stack(predictions, 1), dec_hidden, attentions, tf.stack(coverages, 1)
 

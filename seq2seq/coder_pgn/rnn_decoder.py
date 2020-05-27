@@ -4,6 +4,7 @@ import tensorflow as tf
 def masked_attention(enc_padding_mask, attn_dist):
     """Take softmax of e then apply enc_padding_mask and re-normalize"""
     attn_dist = tf.squeeze(attn_dist, axis=2)
+    attn_dist = tf.nn.softmax(attn_dist, axis=1)  # shape=(16, 200)
     mask = tf.cast(enc_padding_mask, dtype=attn_dist.dtype)
     attn_dist *= mask  # apply mask
     masked_sums = tf.reduce_sum(attn_dist, axis=1)  # shape (batch_size)
@@ -20,7 +21,7 @@ class BahdanauAttentionCoverage(tf.keras.layers.Layer):
         self.W_c = tf.keras.layers.Dense(units)
         self.V = tf.keras.layers.Dense(1)
 
-    def __call__(self, dec_hidden, enc_output, enc_pad_mask, use_coverage=False, prev_coverage=None):
+    def call(self, dec_hidden, enc_output, enc_pad_mask, use_coverage=False, prev_coverage=None):
         """
          calculate attention and coverage from dec_hidden enc_output and prev_coverage
          one dec_hidden(word) by one dec_hidden
@@ -39,15 +40,7 @@ class BahdanauAttentionCoverage(tf.keras.layers.Layer):
             # self.W_s(values) [batch_sz, max_len, units] self.W_h(hidden_with_time_axis) [batch_sz, 1, units]
             # self.W_c(prev_coverage) [batch_sz, max_len, units]  score [batch_sz, max_len, 1]
             score = self.V(tf.nn.tanh(self.W_s(enc_output) + self.W_h(hidden_with_time_axis) + self.W_c(prev_coverage)))
-            # attention_weights shape (batch_size, max_len, 1)
-
-            # attention_weights sha== (batch_size, max_length, 1)
-            mask = tf.cast(enc_pad_mask, dtype=score.dtype)
-            masked_score = tf.squeeze(score, axis=-1) * mask
-            masked_score = tf.expand_dims(masked_score, axis=2)
-
-            attention_weights = tf.nn.softmax(masked_score, axis=1)
-            # attention_weights = masked_attention(enc_pad_mask, attention_weights)
+            attention_weights = masked_attention(enc_pad_mask, score)
             coverage = attention_weights + prev_coverage
         else:
             # score shape == (batch_size, max_length, 1)
@@ -56,12 +49,7 @@ class BahdanauAttentionCoverage(tf.keras.layers.Layer):
             # 计算注意力权重值
             score = self.V(tf.nn.tanh(
                 self.W_s(enc_output) + self.W_h(hidden_with_time_axis)))
-
-            mask = tf.cast(enc_pad_mask, dtype=score.dtype)
-            masked_score = tf.squeeze(score, axis=-1) * mask
-            masked_score = tf.expand_dims(masked_score, axis=2)
-            attention_weights = tf.nn.softmax(masked_score, axis=1)
-            # attention_weights = masked_attention(enc_pad_mask, attention_weights)
+            attention_weights = masked_attention(enc_pad_mask, score)
             if use_coverage:
                 coverage = attention_weights
             else:
@@ -71,7 +59,7 @@ class BahdanauAttentionCoverage(tf.keras.layers.Layer):
         # context_vector shape after sum == (batch_size, hidden_size)
         context_vector = attention_weights * enc_output
         context_vector = tf.reduce_sum(context_vector, axis=1)
-        return context_vector, attention_weights, coverage
+        return context_vector, tf.squeeze(attention_weights, -1), coverage
 
 
 class Decoder(tf.keras.Model):
@@ -90,7 +78,7 @@ class Decoder(tf.keras.Model):
             return_state=True, recurrent_initializer='glorot_uniform')
         self.fc = tf.keras.layers.Dense(vocab_size, activation=tf.keras.activations.softmax)
 
-    def __call__(self, dec_inp, hidden, enc_output, context_vector):
+    def call(self, dec_inp, hidden, enc_output, context_vector):
         # 使用上次的隐藏层（第一次使用编码器隐藏层）、编码器输出计算注意力权重
         # enc_output shape == (batch_size, max_length, hidden_size)
 
@@ -122,7 +110,7 @@ class Pointer(tf.keras.layers.Layer):
         self.w_i_reduce = tf.keras.layers.Dense(1)
         self.w_c_reduce = tf.keras.layers.Dense(1)
 
-    def __call__(self, context_vector, dec_hidden, dec_inp):
+    def call(self, context_vector, dec_hidden, dec_inp):
         # change dec_inp_context to [batch_sz,embedding_dim+enc_units]
         dec_inp = tf.squeeze(dec_inp, axis=1)
         return tf.nn.sigmoid(self.w_s_reduce(dec_hidden) + self.w_c_reduce(context_vector) + self.w_i_reduce(dec_inp))

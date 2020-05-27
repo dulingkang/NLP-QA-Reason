@@ -32,7 +32,7 @@ def prepare(params):
     print("Building the model ...")
     if params.get('pointer_gen'):
         model = PGN(params)
-        ckpt = tf.train.Checkpoint(PGN=model)
+        ckpt = tf.train.Checkpoint(step=tf.Variable(0), PGN=model)
         checkpoint_dir = params["pgn_model_dir"]
     else:
         model = SequenceToSequence(params)

@@ -38,7 +38,7 @@ def main():
                         help="maximum number of words of the predicted abstract", type=int)
     parser.add_argument("--min_dec_steps", default=30,
                         help="Minimum number of words of the predicted abstract", type=int)
-    parser.add_argument("--batch_size", default=64, help="batch size", type=int)
+    parser.add_argument("--batch_size", default=3, help="batch size", type=int)
     parser.add_argument("--adagrad_init_acc", default=0.1,
                         help="Adagrad optimizer initial accumulator value. "
                              "Please refer to the Adagrad optimizer API documentation "
@@ -57,13 +57,13 @@ def main():
                                                            ' If zero, then no incentive to minimize coverage loss.',
                         type=float)
 
-    parser.add_argument('--max_grad_norm', default=2.0, help='for gradient clipping', type=float)
+    parser.add_argument('--max_grad_norm', default=1.0, help='for gradient clipping', type=float)
     parser.add_argument("--learning_rate", default=0.001, help="Learning rate", type=float)
 
     parser.add_argument("--vocab_size", default=30000, help="max vocab size , None-> Max ", type=int)
     parser.add_argument("--max_vocab_size", default=30000, help="max vocab size , None-> Max ", type=int)
 
-    parser.add_argument("--beam_size", default=2,
+    parser.add_argument("--beam_size", default=3,
                         help="beam size for beam search decoding (must be equal to batch size in decode mode)",
                         type=int)
     parser.add_argument("--embed_size", default=300, help="Words embeddings dimension", type=int)
@@ -88,9 +88,9 @@ def main():
     parser.add_argument("--embedding_npy", default=QA_WORD2VEC_EMBEDDING_NPY_PATH, help="embedding_npy")
 
     # others
-    parser.add_argument("--max_train_steps", default=1300, help="max_train_steps", type=int)
-    parser.add_argument("--checkpoints_save_steps", default=10, help="Save checkpoints every N steps", type=int)
-    parser.add_argument("--num_to_test", default=10, help="Number of examples to test", type=int)
+    parser.add_argument("--max_train_steps", default=2000, help="max_train_steps", type=int)
+    parser.add_argument("--checkpoints_save_steps", default=500, help="Save checkpoints every N steps", type=int)
+    parser.add_argument("--num_to_test", default=5, help="Number of examples to test", type=int)
     parser.add_argument("--max_num_to_eval", default=5, help="max_num_to_eval", type=int)
     parser.add_argument("--epochs", default=20, help="train epochs", type=int)
 
