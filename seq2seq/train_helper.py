@@ -157,16 +157,16 @@ def train_model_pgn(model, dataset, params, ckpt_manager):
                         step,
                         total_loss / step)
                     )
+            if step % params["checkpoints_save_steps"] == 0:
+                if total_loss / step < best_loss:
+                    best_loss = total_loss / step
+                    ckpt_save_path = ckpt_manager.save()
+                    print('Saving checkpoint for epoch {} at {} ,best loss {}'.format(epoch + 1, ckpt_save_path,
+                                                                                      best_loss))
+                    print('Epoch {} Loss {:.4f}'.format(epoch + 1, total_loss / step))
+                    print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
             if iter_num >= max_train_steps:
                 break
-
-        # if (epoch + 1) % 1 == 0:
-        if total_loss / step < best_loss:
-            best_loss = total_loss / step
-            ckpt_save_path = ckpt_manager.save()
-            print('Saving checkpoint for epoch {} at {} ,best loss {}'.format(epoch + 1, ckpt_save_path, best_loss))
-            print('Epoch {} Loss {:.4f}'.format(epoch + 1, total_loss / step))
-            print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
 
         if iter_num >= max_train_steps:
             break

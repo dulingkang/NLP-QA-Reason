@@ -203,8 +203,8 @@ def example_generator(params, vocab, max_enc_len, max_dec_len, mode, batch_size)
             dataset_2 = tf.data.TextLineDataset(params["train_seg_y_dir"])
             train_dataset = tf.data.Dataset.zip((dataset_1, dataset_2))
         elif mode == "eval":
-            dataset_1 = tf.data.TextLineDataset(params["val_seg_x_dir"])
-            dataset_2 = tf.data.TextLineDataset(params["val_seg_y_dir"])
+            dataset_1 = tf.data.TextLineDataset(params["test_seg_x_dir"])
+            dataset_2 = tf.data.TextLineDataset(params["test_seg_y_dir"])
             train_dataset = tf.data.Dataset.zip((dataset_1, dataset_2))
         # train_dataset = train_dataset.shuffle(10, reshuffle_each_iteration=True).repeat()
         for raw_record in train_dataset:

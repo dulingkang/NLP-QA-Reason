@@ -40,7 +40,8 @@ class PGN(tf.keras.Model):
             p_gen = self.pointer(context_vector, dec_hidden, dec_x)
             final_dists = _calc_final_dist(
                 enc_extended_inp, [pred],
-                [tf.squeeze(attentions, axis=2)],
+                [attentions],
+                # [tf.squeeze(attentions, axis=2)],
                 [p_gen], batch_oov_len,
                 self.params["vocab_size"], self.params["batch_size"]
             )

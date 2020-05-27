@@ -1,5 +1,7 @@
 import os
 import tensorflow as tf
+from rouge import Rouge
+
 from seq2seq.model.sequence_to_sequence import SequenceToSequence
 from seq2seq.model.pgn import PGN
 from seq2seq.batcher import batcher, Vocab
@@ -65,20 +67,22 @@ def predict_result(params):
         # yield beam_decode(model, batch, vocab, params)
         result.append(beam_decode(model, batch, vocab, params))
     print('predict result', result)
-    # 保存结果
-    save_predict_result(result, params['test_save_dir'])
 
 
-def test_and_save(params):
-    assert params["test_save_dir"], "provide a dir where to save the results"
-    gen = test(params)
-    results = []
-    with tqdm(total=params["num_to_test"], position=0, leave=True) as pbar:
-        for i in range(params["num_to_test"]):
+def evaluate(params):
+    gen = predict_result(params)
+    reals = []
+    preds = []
+    with tqdm(total=params["max_num_to_eval"],position=0, leave=True) as pbar:
+        for i in range(params["max_num_to_eval"]):
             trial = next(gen)
-            results.append(trial.abstract)
+            reals.append(trial.real_abstract)
+            preds.append(trial.abstract)
             pbar.update(1)
-    return results
+    r=Rouge()
+    scores = r.get_scores(preds, reals, avg=True)
+    print("\n\n")
+    print(scores)
 
 
 def save_predict_result(results, params):

@@ -6,9 +6,8 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 
-import tensorflow as tf
 import argparse
-from seq2seq.train_eval_test import train, predict_result
+from seq2seq.train_eval_test import train, predict_result, evaluate
 
 
 from const import (
@@ -116,11 +115,10 @@ def main():
     params = vars(args)
     print(params)
     if params["mode"] == "train":
-        params["max_train_steps"] = NUM_SAMPLES // params["batch_size"]
         train(params)
 
-    # elif params["mode"] == "eval":
-    #     evaluate(params)
+    elif params["mode"] == "eval":
+        evaluate(params)
     elif params["mode"] == "test":
         params["batch_size"] = params["beam_size"]
         predict_result(params)
