@@ -14,7 +14,7 @@ QA_TEST_DATA_PATH = QA_DATA_DIR + '/AutoMaster_TestSet.csv'
 QA_TRAIN_CLEAN_X_PATH = QA_DATA_DIR + '/train_set_seg_x.txt'
 QA_TRAIN_CLEAN_Y_PATH = QA_DATA_DIR + '/train_set_seg_y.txt'
 QA_TEST_CLEAN_X_PATH = QA_DATA_DIR + '/test_set_seg_x.txt'
-QA_STOPWORDS_PATH = QA_DATA_DIR + '/stop_words.txt'
+QA_STOPWORDS_PATH = QA_DATA_DIR + '/stopwords.txt'
 QA_SENTENCE_PATH = QA_DATA_DIR + '/sentences.txt'
 
 QA_WORD2VEC_PKL_OUT_PATH = QA_DATA_DIR + '/word2vec.txt'
